@@ -1,12 +1,13 @@
-from cmath import pi
 import pygame
 import threading
 import socket
 import pickle
 RUNNING = True
 LENGTH, HEIGHT = 600,600
+LENS = 100
 ID = [1,2,3,4]
 CLIENTS = []
+POS = LENGTH/2-LENS/2,HEIGHT/2-LENS/2,
 pygame.init()
 pygame.display.set_caption("PICTURE")
 SCREEN = pygame.display.set_mode((LENGTH,HEIGHT))
@@ -40,8 +41,6 @@ class Client:
                 SCREEN.fill(value,((x,y),(1,1)))
     def exit(self):
         self.thread.join()
-def main():
-    pass
 
 
 def accept_connections():
@@ -64,7 +63,8 @@ def graphics():
             client.draw()
         for event in pygame.event.get():
             pass
-
+def draw_lens():
+    pass
 
 def main():
     t = threading.Thread(target=accept_connections)
