@@ -3,26 +3,40 @@ import socket
 import time
 from PIL import Image
 import pickle
+import threading
+import numpy as np
+
+IP = "192.168.99.14"
+PORT = 8168
 
 pos = (0,0)
-size = (50,50)
+size = (0,0)
 
 
-def recv_rect(sock):
+CHANGE = False
+
+
+
+def recv_rect(sock,):
     global pos
     global size
+    global CHANGE
     while True:
         data = b''
-        while '###' not in data:
-            data += sock.recv_data(1)       
+        while b'###' not in data:
+            data += sock.recv(1)  
+        #print(b"recv --------> " + data)     
         data = data[:-3]
-        data = data.split(b'|')
-        if data[0] == 'req':
-            
+        data = data.decode()
+        data = data.split('|')
+        if data[0].lower() == 'req':
+            pos = (int(data[1]), int(data[2]))
+            size = (int(data[3]), int(data[4]))
+            CHANGE = True
 
-def image_to_pixel(picture : Image):
-    px = picture.load()
 
+
+def image_to_pixel(px):
     x = pos[0]
     y = pos[1]
 
@@ -37,29 +51,46 @@ def image_to_pixel(picture : Image):
             pixle = px[i,j]
             row.append(pixle)
         pix_picture.append(row)
-
     return pix_picture
 
     
-    
 
-def send_photo(sock, picture):
+def send_photo(sock : socket.socket, px):
+    global CHANGE
     while True:
-        pass
+        #print(pos, size)
+        if CHANGE:
+            CHANGE = False
+            pix_picture = image_to_pixel(px)
+            pickled_picture = pickle.dumps(pix_picture)
+            data_to_send = b"img|" + pickled_picture + b"###"
+            #print(data_to_send)
+            sock.send(data_to_send)
         
 
 
 def main():
-    picture = Image.open('cool_image.jpg')
+    """picture = Image.open('cool_picture.jpg')
     data = image_to_pixel(picture)
-    print(data)
+    print(data)"""
+    picture = Image.open("cool_picture.png")
+    px = picture.load()
+    sock = socket.socket()
+    sock.connect((IP, PORT))
+    t = threading.Thread(target=recv_rect, args=(sock,))
+    t.start()
+    send_photo(sock, px)
+
     # connecting to the server
 
 
 
 if __name__ == '__main__':
+    if (len(sys.argv) > 2):
+        IP = sys.argv[1]
+        PORT = sys.argv[2]
+    main()
     st = 'abcdefghijkl'
     print(st[3:-3])
     
-    ###main()
 
