@@ -1,3 +1,4 @@
+import chunk
 import sys
 import socket
 import time
@@ -9,10 +10,12 @@ import numpy as np
 IP = "192.168.99.14"
 PORT = 8168
 
+serverAddressPort = (IP, 7471)
+
 pos = (0,0)
 size = (0,0)
 
-
+CHUNK = 1024
 CHANGE = False
 
 
@@ -53,20 +56,41 @@ def image_to_pixel(px):
         pix_picture.append(row)
     return pix_picture
 
-    
 
-def send_photo(sock : socket.socket, px):
+def send_photo(px):
     global CHANGE
+    sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     while True:
         #print(pos, size)
         if CHANGE:
             CHANGE = False
             pix_picture = image_to_pixel(px)
             pickled_picture = pickle.dumps(pix_picture)
-            data_to_send = b"img|" + pickled_picture + b"###"
+            print(len(pickled_picture))
+            #data_to_send = pickled_picture + b'###'
             #print(data_to_send)
-            sock.send(data_to_send)
-        
+            sock.sendto(pickled_picture, serverAddressPort)
+            #send_chunk_with_num(sock, pickled_picture)
+
+
+def send_chunk_with_num(sock, data_to_send):
+    sock.sendto(str((len(data_to_send) // (CHUNK - 5) + 1)).encode(), serverAddressPort)
+    i = 0
+    while len(data_to_send) > CHUNK - 5:
+        to_send = (str(i).zfill(5)).encode() + data_to_send[:CHUNK - 5]
+        #print(to_send)
+        sock.sendto(to_send, serverAddressPort)
+        data_to_send = data_to_send[CHUNK - 5:]
+        i +=1
+    to_send = (str(i).zfill(5)).encode() + data_to_send[:CHUNK - 5]
+    sock.sendto(to_send, serverAddressPort)
+
+
+def send_udp(sock, data_to_send):
+    while len(data_to_send) > CHUNK:
+        sock.sendto(data_to_send[:CHUNK], serverAddressPort)
+        data_to_send = data_to_send[CHUNK:]
+    sock.sendto(data_to_send, serverAddressPort)
 
 
 def main():
@@ -79,7 +103,7 @@ def main():
     sock.connect((IP, PORT))
     t = threading.Thread(target=recv_rect, args=(sock,))
     t.start()
-    send_photo(sock, px)
+    send_photo(px)
 
     # connecting to the server
 
