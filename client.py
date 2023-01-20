@@ -3,11 +3,12 @@ import sys
 import socket
 import time
 from PIL import Image
+import json
 import pickle
 import threading
 import numpy as np
 
-IP = "192.168.99.14"
+IP = "192.168.99.132"
 PORT = 8168
 
 serverAddressPort = (IP, 7471)
@@ -24,18 +25,22 @@ def recv_rect(sock,):
     global pos
     global size
     global CHANGE
+    global serverAddressPort
     while True:
         data = b''
         while b'###' not in data:
             data += sock.recv(1)  
         #print(b"recv --------> " + data)     
+        print(data)
         data = data[:-3]
         data = data.decode()
         data = data.split('|')
-        if data[0].lower() == 'req':
+        if data[0].lower() == 'req':     
             pos = (int(data[1]), int(data[2]))
             size = (int(data[3]), int(data[4]))
             CHANGE = True
+        if data[0].lower() == 'prt':
+            serverAddressPort = (serverAddressPort[0],int(data[1])) 
 
 
 
@@ -66,10 +71,12 @@ def send_photo(px):
             CHANGE = False
             pix_picture = image_to_pixel(px)
             pickled_picture = pickle.dumps(pix_picture)
+            #pickled_picture = json.dumps(pix_picture)
             print(len(pickled_picture))
             #data_to_send = pickled_picture + b'###'
             #print(data_to_send)
             sock.sendto(pickled_picture, serverAddressPort)
+            #sock.sendto(pickled_picture.encode(), serverAddressPort)
             #send_chunk_with_num(sock, pickled_picture)
 
 
@@ -97,10 +104,11 @@ def main():
     """picture = Image.open('cool_picture.jpg')
     data = image_to_pixel(picture)
     print(data)"""
-    picture = Image.open("cool_picture.png")
+    picture = Image.open("cool_picture.jpg")
     px = picture.load()
     sock = socket.socket()
     sock.connect((IP, PORT))
+    
     t = threading.Thread(target=recv_rect, args=(sock,))
     t.start()
     send_photo(px)
